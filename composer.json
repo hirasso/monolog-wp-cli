@@ -1,6 +1,6 @@
 {
-  "name": "mhcg/monolog-wp-cli",
-  "description": "Extension for Monolog to support outputting to WP-CLI (The WordPress command line interface) when running wp command lines.",
+  "name": "hirasso/monolog-wp-cli",
+  "description": "Extension for Monolog to support outputting to WP-CLI (The WordPress command line interface) when running wp commands.",
   "keywords": [
     "log",
     "logging",
@@ -10,19 +10,23 @@
   "license": "MIT",
   "authors": [
     {
+      "name": "Rasso Hilber",
+      "email": "mail@rassohilber.com"
+    },
+    {
       "name": "Mark Heydon",
-      "email": "contact@mhcg.co.uk",
-      "role": "Developer"
+      "email": "contact@mhcg.co.uk"
     }
   ],
   "type": "library",
   "require": {
-    "php": "^7.3 | ^7.4 | ^8.0",
-    "monolog/monolog": "^2.5"
+    "php": "8.2",
+    "monolog/monolog": "^3.6"
   },
   "require-dev": {
     "wp-cli/wp-cli": "^2.0",
-    "phpunit/phpunit": "^9.5"
+    "phpunit/phpunit": "^9.5",
+    "symfony/var-dumper": "^7.0"
   },
   "autoload": {
     "psr-4": {

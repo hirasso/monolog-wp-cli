@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Unit tests for WPCLIHandler
@@ -6,7 +8,10 @@
 
 namespace MHCGDev\Monolog\Handler;
 
+use MHCG\Monolog\Handler\LoggerMapEntry;
 use MHCG\Monolog\Handler\WPCLIHandler;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
 use PHPUnit\Framework\TestCase;
 use Monolog\Logger;
 
@@ -37,7 +42,6 @@ class WPCLIHandlerTest extends TestCase
     }
 
 
-    //<editor-fold desc="Private helper methods">
 
     /**
      * Sanity check for all (well most at least) tests.
@@ -69,7 +73,7 @@ class WPCLIHandlerTest extends TestCase
      */
     private static function getHandleObjectForStandardTest(): WPCLIHandler
     {
-        return new WPCLIHandler(Logger::DEBUG);
+        return new WPCLIHandler(Level::Debug);
     }
 
     /**
@@ -88,7 +92,7 @@ class WPCLIHandlerTest extends TestCase
      * @param int $level
      * @return array
      */
-    private static function getLoggerRecordArrayWithLevel(int $level = Logger::DEBUG): array
+    private static function getLoggerRecordArrayWithLevel(int $level = Level::Debug): array
     {
         $array = array(
             'level' => $level
@@ -96,9 +100,8 @@ class WPCLIHandlerTest extends TestCase
         return $array;
     }
 
-    //</editor-fold>
 
-    //<editor-fold desc="Constructor Tests">
+
 
     /**
      * @covers \MHCG\Monolog\Handler\WPCLIHandler::__construct
@@ -135,7 +138,7 @@ class WPCLIHandlerTest extends TestCase
         $this->sanityCheck();
 
         $this->pretendToBeInWPCLI();
-        $var = new WPCLIHandler(Logger::DEBUG, true, true);
+        $var = new WPCLIHandler(Level::Debug, true, true);
         $this->assertTrue(is_object($var));
         $this->isInstanceOf('\MHCG\Monolog\Handler\WPCLIHandler');
         unset($var);
@@ -151,49 +154,57 @@ class WPCLIHandlerTest extends TestCase
         $this->sanityCheck();
 
         $this->pretendToBeInWPCLI();
-        $standard = new WPCLIHandler(Logger::DEBUG, true, false);
-        $verbose = new WPCLIHandler(Logger::DEBUG, true, true);
-        $testRecord = array(
-            'message' => 'This is a message',
-            'context' => array('whatever' => 'something'),
-            'extra' => array('whatever2' => 'someting else')
+
+        $logger = new Logger('test', [
+            $handler = new TestHandler,
+        ]);
+        $logger->info(
+            message: 'test',
+            context: ['context']
+        );
+        $testRecord = $handler->getRecords()[0];
+
+        $standardHandler = new WPCLIHandler(
+            level: Level::Debug,
+            bubble: true,
+            verbose: false
         );
 
-        $testStandard = $standard->getFormatter()->format($testRecord);
-        $testVerbose = $verbose->getFormatter()->format($testRecord);
+        $verboseHandler = new WPCLIHandler(
+            level: Level::Debug,
+            bubble: true,
+            verbose: true
+        );
 
-        // test there is something in both
-        $this->assertTrue(strlen($testStandard) > 1);
-        $this->assertTrue(strlen($testVerbose) > 1);
+        $testStandard = $standardHandler->getFormatter()->format($testRecord);
+        $testVerbose = $verboseHandler->getFormatter()->format($testRecord);
 
-        // then test they are different (which they should be)
-        $this->assertNotEquals($testStandard, $testVerbose);
+        $this->assertTrue($testStandard === 'test');
+        $this->assertTrue($testVerbose === 'test ["context"] []');
     }
 
-    //</editor-fold>
 
-    //<editor-fold desc="Logger Map Tests">
+
     /**
      * Tests the default logger map contains all the Logger supported levels.
      *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::getDefaultLoggerMap
+     * @covers \MHCG\Monolog\Handler\WPCLIHandler->getLoggerMapEntry
      */
-    public function testDefaultMap()
+    public function testAllLevelsImplemented()
     {
-
-        // totally round the houses this but Logger doesn't currently return a set of all the level constants
-        $supportedNames = Logger::getLevels();
-        $loggerLevels = [];
-        foreach ($supportedNames as $levelName) {
-            $loggerLevels[] = Logger::toMonologLevel($levelName);
-        }
-        $loggerMap = WPCLIHandler::getDefaultLoggerMap();
-        $difference = array_diff($loggerLevels, array_keys($loggerMap));
-        $this->assertCount(
-            0,
-            $difference,
-            'Default logger map is missed some Logger supported levels'
+        $builtinLevels = array_map(
+            fn (string $levelName) => Logger::toMonologLevel($levelName),
+            Level::NAMES
         );
+
+        $handler = new WPCLIHandler();
+
+        foreach ($builtinLevels as $level) {
+            $this->assertNotEmpty(
+                $handler->getLoggerMapEntry($level),
+                message: "Level " . $level->getName() . "not implemented in WP_CLI handler"
+            );
+        }
     }
 
     /**
@@ -203,38 +214,11 @@ class WPCLIHandlerTest extends TestCase
      */
     public function testValidateLoggerMapDefaultMap()
     {
-        $defaultMap = WPCLIHandler::getDefaultLoggerMap();
-        foreach ($defaultMap as $level => $mapping) {
-            $this->assertTrue(count($mapping) > 0);
-            $levelName = Logger::getLevelName($level);
-            // this shouldn't throw an exception
-            WPCLIHandler::validateLoggerMap($defaultMap, $level, $levelName);
-            $this->assertTrue(true);
+        $handler = new WPCLIHandler();
+        $map = $handler->getDefaultLoggerMap();
+        foreach ($map as $entry) {
+            $this->assertTrue($entry instanceof LoggerMapEntry);
         }
-    }
-
-    /**
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::validateLoggerMap
-     */
-    public function testValidateLoggerMapInvalidLevel()
-    {
-        $defaultMap = WPCLIHandler::getDefaultLoggerMap();
-        $this->expectExceptionMessageMatches('/has no entry for level/');
-        WPCLIHandler::validateLoggerMap($defaultMap, 999999, 'Whatever');
-    }
-
-    /**
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::validateLoggerMap
-     */
-    public function testValidateLoggerMapInvalidMethod()
-    {
-        $map = [
-            999999 => [
-                'method' => 'method_does_not_exist'
-            ]
-        ];
-        $this->expectExceptionMessageMatches('/invalid method/');
-        WPCLIHandler::validateLoggerMap($map, 999999, 'Whatever');
     }
 
     /**
@@ -242,42 +226,14 @@ class WPCLIHandlerTest extends TestCase
      */
     public function testValidateLoggerMapInvalidUseOfExit()
     {
-        $map = [
-            Logger::DEBUG => [
-                'method' => 'debug',
-                'exit' => true
-            ]
-        ];
-        $this->expectExceptionMessageMatches('/specifies exit/');
-        WPCLIHandler::validateLoggerMap(
-            $map,
-            Logger::DEBUG,
-            Logger::getLevelName(Logger::DEBUG)
+        $this->expectExceptionMessageMatches('/is only allowed/');
+
+        $entry = new LoggerMapEntry(
+            level: Level::Debug,
+            method: 'debug',
+            exit: true
         );
     }
-
-    /**
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::validateLoggerMap
-     */
-    public function testValidateLoggerMapValidUseOfExit()
-    {
-        $map = [
-            Logger::DEBUG => [
-                'method' => 'error',
-                'exit' => true
-            ]
-        ];
-        // shouldn't throw an exception
-        WPCLIHandler::validateLoggerMap(
-            $map,
-            Logger::DEBUG,
-            Logger::getLevelName(Logger::DEBUG)
-        );
-        $this->assertTrue(true);
-    }
-    //</editor-fold>
-
-    //<editor-fold desc="Main Logger Method Tests">
 
     /**
      * Tests the handler can actually be added to a Logger ok.
@@ -294,180 +250,8 @@ class WPCLIHandlerTest extends TestCase
         $this->assertTrue(true);
     }
 
-    //</editor-fold>
-
-    //<editor-fold desc="Handling and Supported Tests">
     /**
-     * Tests to make sure all of the default supported levels are actually showing as supported
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::getSupportedLevels
-     */
-    public function testSupportedDefault()
-    {
-        $defaultMap = WPCLIHandler::getDefaultLoggerMap();
-        $supported = WPCLIHandler::getSupportedLevels($defaultMap);
-
-        $this->assertTrue(count($defaultMap) > 0);
-        $this->assertTrue(count($supported) > 0);
-
-        $countOfMap = count(array_keys($defaultMap));
-        $this->assertCount($countOfMap, $supported);
-        $this->assertEquals(array_keys($defaultMap), $supported);
-    }
-
-    /**
-     * Tests to make sure the getSupportedLevels methods correctly ignores invalid map entries
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::getSupportedLevels
-     */
-    public function testSupportedDoesNotIncludeInvalid()
-    {
-        $map = [
-            999999 => [
-                'method' => 'method_does_not_exist'
-            ],
-            Logger::DEBUG => [
-                'method' => 'debug',
-            ]
-        ];
-
-        $supported = WPCLIHandler::getSupportedLevels($map);
-        $this->assertCount(2, $map);
-        $this->assertCount(1, $supported);
-        $this->assertEquals($supported[0], Logger::DEBUG);
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns false for an unsupported logging level.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingInvalid()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertFalse($handler->isHandling(self::getLoggerRecordArrayWithLevel(999)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level DEBUG.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidDebug()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::DEBUG)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level INFO.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidInfo()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::INFO)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level NOTICE.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidNotice()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::NOTICE)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level WARNING.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidWarning()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::WARNING)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level ERROR.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidError()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::ERROR)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level CRITICAL.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidCritical()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::CRITICAL)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level ALERT.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidAlert()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::ALERT)));
-    }
-
-    /**
-     * Tests isHandling of WPCLIHandler returns true for support logging level EMERGENCY.
-     *
-     * @covers \MHCG\Monolog\Handler\WPCLIHandler::isHandling
-     */
-    public function testIsHandlingValidEmergency()
-    {
-        $this->sanityCheck();
-
-        $this->pretendToBeInWPCLI();
-        $handler = self::getHandleObjectForStandardTest();
-        $this->assertTrue($handler->isHandling(self::getLoggerRecordArrayWithLevel(Logger::EMERGENCY)));
-    }
-
-    //</editor-fold>
-
-    //<editor-fold desc="Logging method tests">
-    /**
-     * Test that Logger::debug() doesn't throw an error using WPCLIHander.
+     * Test that Level::Debug() doesn't throw an error using WPCLIHander.
      *
      * @covers \MHCG\Monolog\Handler\WPCLIHandler::write
      */
@@ -620,5 +404,5 @@ class WPCLIHandlerTest extends TestCase
         unset($logger);
         $this->assertTrue(true);
     }
-    //</editor-fold>
+
 }

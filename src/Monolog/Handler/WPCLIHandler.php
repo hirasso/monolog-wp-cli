@@ -21,6 +21,9 @@ use Monolog\Level;
 use Monolog\LogRecord;
 use WP_CLI;
 
+use Symfony\Component\VarDumper\Caster\ScalarStub;
+use Symfony\Component\VarDumper\VarDumper;
+
 
 readonly class LoggerMapEntry
 {
@@ -120,12 +123,18 @@ final class WPCLIHandler extends AbstractProcessingHandler
             $message = "({$mapEntry->level->name}) $message";
         }
 
-        if ($method !== 'error') {
-            WP_CLI::$method($message);
-            return;
+        // Print the message to the console
+        WP_CLI::$method($message);
+
+        // If there is a context available, pretty-print it using symphony/var-dumper
+        if (!empty($record->context)) {
+            $this->dump($record->context);
         }
 
-        WP_CLI::$method($message, $mapEntry->exit);
+        // If the script should exit, do it.
+        if ($mapEntry->exit) {
+            exit;
+        }
     }
 
     /**
@@ -189,5 +198,33 @@ final class WPCLIHandler extends AbstractProcessingHandler
         }
 
         return new LineFormatter("%message%");
+    }
+
+    /**
+     * @author Nicolas Grekas <p@tchwork.com>
+     * @author Alexandre Daubois <alex.daubois@gmail.com>
+     */
+    private function dump(mixed ...$vars): mixed
+    {
+        if (!$vars) {
+            VarDumper::dump(new ScalarStub('🐛'));
+
+            return null;
+        }
+
+        if (array_key_exists(0, $vars) && 1 === count($vars)) {
+            VarDumper::dump($vars[0]);
+            $k = 0;
+        } else {
+            foreach ($vars as $k => $v) {
+                VarDumper::dump($v, is_int($k) ? 1 + $k : $k);
+            }
+        }
+
+        if (1 < count($vars)) {
+            return $vars;
+        }
+
+        return $vars[$k];
     }
 }

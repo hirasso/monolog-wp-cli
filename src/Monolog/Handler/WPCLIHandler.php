@@ -7,10 +7,10 @@ declare(strict_types=1);
  *
  * @version 2.0.0
  *
- * @link https://github.com/hirasso/monolog-wp-cli
+ * @link https://github.com/mhcg/monolog-wp-cli
  *
- * @author Rasso Hilber <mail@rassohilber.com>
  * @author Mark Heydon <contact@mhcg.co.uk>
+ * @author Rasso Hilber <mail@rassohilber.com>
  *
  */
 

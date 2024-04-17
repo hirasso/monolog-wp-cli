@@ -212,10 +212,10 @@ class WPCLIHandlerTest extends TestCase
      *
      * @covers \MHCG\Monolog\Handler\WPCLIHandler::validateLoggerMap
      */
-    public function testValidateLoggerMapDefaultMap()
+    public function testValidLoggerMap()
     {
         $handler = new WPCLIHandler();
-        $map = $handler->getDefaultLoggerMap();
+        $map = $handler->getLoggerMap();
         foreach ($map as $entry) {
             $this->assertTrue($entry instanceof LoggerMapEntry);
         }

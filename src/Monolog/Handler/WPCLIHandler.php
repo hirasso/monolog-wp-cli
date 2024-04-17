@@ -135,21 +135,7 @@ final class WPCLIHandler extends AbstractProcessingHandler
      *
      * @return LoggerMapEntry[]
      */
-    protected function getLoggerMap()
-    {
-        if (!$this->loggerMap) {
-            $this->loggerMap = $this->getDefaultLoggerMap();
-        }
-
-        return $this->loggerMap;
-    }
-
-    /***
-     * Returns an array of default mappings to map Logger methods to WP-CLI methods.
-     *
-     * @return LoggerMapEntry[]
-     */
-    public function getDefaultLoggerMap()
+    public function getLoggerMap()
     {
         return [
             new LoggerMapEntry(

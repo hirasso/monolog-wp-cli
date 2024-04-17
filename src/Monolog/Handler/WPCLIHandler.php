@@ -5,8 +5,6 @@ declare(strict_types=1);
 /**
  * Handler for Monolog that uses WP-CLI methods to for logging.
  *
- * @version 2.0.0
- *
  * @link https://github.com/mhcg/monolog-wp-cli
  *
  * @author Mark Heydon <contact@mhcg.co.uk>

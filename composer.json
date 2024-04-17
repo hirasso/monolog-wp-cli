@@ -1,6 +1,7 @@
 {
   "name": "hirasso/monolog-wp-cli",
   "description": "Extension for Monolog to support outputting to WP-CLI (The WordPress command line interface) when running wp commands.",
+  "version": "2.0.0",
   "keywords": [
     "log",
     "logging",

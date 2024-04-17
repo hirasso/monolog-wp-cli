@@ -11,13 +11,13 @@
   "license": "MIT",
   "authors": [
     {
+      "name": "Mark Heydon",
+      "email": "contact@mhcg.co.uk"
+    },
+    {
       "name": "Rasso Hilber",
       "email": "mail@rassohilber.com"
     },
-    {
-      "name": "Mark Heydon",
-      "email": "contact@mhcg.co.uk"
-    }
   ],
   "type": "library",
   "require": {

@@ -124,11 +124,15 @@ final class WPCLIHandler extends AbstractProcessingHandler
         }
 
         // Print the message to the console
-        WP_CLI::$method($message);
+        if ($mapEntry->method === 'error') {
+            WP_CLI::error($message, false);
+        } else {
+            WP_CLI::$method($message);
+        }
 
         // If there is a context available, pretty-print it using symphony/var-dumper
         if (!empty($record->context)) {
-            $this->dump($record->context);
+            $this->dump(['context' => $record->context]);
         }
 
         // If the script should exit, do it.
